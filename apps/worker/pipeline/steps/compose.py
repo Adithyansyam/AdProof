@@ -1,1 +1,1 @@
-"""Compose step — ffmpeg final assembly of video + voiceover + score."""
+"""Compose step — ffmpeg merge + thumbnail via ffmpeg_utils.py."""
