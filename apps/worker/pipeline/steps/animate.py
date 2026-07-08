@@ -1,1 +1,1 @@
-"""Animate step — image to video with concurrent fan-out."""
+"""Animate step — live: GMI Cloud Kling image2video via live_pipeline.py."""
