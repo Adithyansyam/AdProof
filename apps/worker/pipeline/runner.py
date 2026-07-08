@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from config import get_settings
 from db.models import Brief, Run, RunStep, Variant
-from pipeline.demo_pipeline import run_demo_pipeline
+from pipeline.demo_pipeline import run_mock_pipeline
+from pipeline.live_pipeline import run_live_pipeline
 from storage.b2_client import get_storage
 
 
@@ -46,29 +47,18 @@ def execute_run(db: Session, brief_id: str, run_id: str, fork_override: dict | N
     def on_step(info: dict):
         _record_step(db, run_id, info)
 
-    try:
-        if settings.effective_demo_mode:
-            result = run_demo_pipeline(
-                brief_id=str(brief_id),
-                run_id=str(run_id),
-                brief_text=brief.brief_text,
-                brand_name=brief.brand_name,
-                storage=storage,
-                on_step_complete=on_step,
-                fork_override=fork_override,
-            )
-        else:
-            from pipeline.ad_pipeline import run_genblaze_pipeline
+    pipeline_fn = run_mock_pipeline if settings.is_mock_mode else run_live_pipeline
 
-            result = run_genblaze_pipeline(
-                brief_id=str(brief_id),
-                run_id=str(run_id),
-                brief_text=brief.brief_text,
-                brand_name=brief.brand_name,
-                storage=storage,
-                on_step_complete=on_step,
-                fork_override=fork_override,
-            )
+    try:
+        result = pipeline_fn(
+            brief_id=str(brief_id),
+            run_id=str(run_id),
+            brief_text=brief.brief_text,
+            brand_name=brief.brand_name,
+            storage=storage,
+            on_step_complete=on_step,
+            fork_override=fork_override,
+        )
 
         variant = Variant(
             run_id=run_id,
@@ -82,7 +72,8 @@ def execute_run(db: Session, brief_id: str, run_id: str, fork_override: dict | N
         db.add(variant)
         run.status = "succeeded"
         run.finished_at = datetime.now(timezone.utc)
-        run.total_cost_usd = Decimal(result.get("total_cost_usd", "0"))
+        if result.get("total_cost_usd"):
+            run.total_cost_usd = Decimal(result["total_cost_usd"])
         brief.status = "done"
         db.commit()
     except Exception:
