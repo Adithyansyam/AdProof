@@ -2,25 +2,29 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { getBrief, getRun } from "@/lib/api-client";
 import { PipelineStatusStream } from "@/components/PipelineStatusStream";
 import { VariantGrid } from "@/components/VariantGrid";
 import type { Brief, RunDetail } from "@/lib/types";
 
 export default function BriefPage({ params }: { params: { briefId: string } }) {
+  const { data: session } = useSession();
+  const token = session?.accessToken;
   const [brief, setBrief] = useState<Brief | null>(null);
   const [run, setRun] = useState<RunDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!token) return;
     let active = true;
     const poll = async () => {
       try {
-        const b = await getBrief(params.briefId);
+        const b = await getBrief(params.briefId, token);
         if (!active) return;
         setBrief(b);
         if (b.latest_run?.id || b.run_id) {
-          const r = await getRun(String(b.latest_run?.id || b.run_id));
+          const r = await getRun(String(b.latest_run?.id || b.run_id), token);
           if (!active) return;
           setRun(r);
         }
@@ -34,7 +38,7 @@ export default function BriefPage({ params }: { params: { briefId: string } }) {
       active = false;
       clearInterval(id);
     };
-  }, [params.briefId]);
+  }, [params.briefId, token]);
 
   if (error) return <main><p style={{ color: "var(--danger)" }}>{error}</p></main>;
   if (!brief) return <main><p>Loading brief...</p></main>;
