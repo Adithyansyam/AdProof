@@ -8,6 +8,32 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 
+class GoogleAuthRequest(BaseModel):
+    email: str = Field(..., min_length=3)
+    google_id: str = Field(..., min_length=1)
+    name: str | None = None
+    picture: str | None = None
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    user_id: str
+    email: str
+    name: str | None = None
+    avatar_url: str | None = None
+
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    name: str | None = None
+    avatar_url: str | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class CreateBriefRequest(BaseModel):
     brand_name: str = Field(..., min_length=1)
     brief_text: str = Field(..., min_length=1)
@@ -135,4 +161,9 @@ class LibraryResponse(BaseModel):
     items: list[LibraryItem]
     page: int
     limit: int
+    total: int
+
+
+class BriefListResponse(BaseModel):
+    items: list[BriefResponse]
     total: int
