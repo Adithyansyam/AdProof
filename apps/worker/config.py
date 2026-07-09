@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     gmicloud_api_key: str = ""
     elevenlabs_api_key: str = ""
     stability_api_key: str = ""
+    auth_jwt_secret: str = ""
 
     class Config:
         env_file = ".env"
