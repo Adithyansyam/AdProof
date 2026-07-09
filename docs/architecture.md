@@ -178,6 +178,7 @@ The **Provenance Viewer** (`/run/[runId]`) is the differentiator screen — visu
 4. **Concurrent animate fan-out** — run multiple image-to-video models in parallel, pick best/fastest; fallback chain if one stalls
 5. **B2 event notifications over polling** — webhook → SSE for real-time frontend updates
 6. **Worker must not be serverless** — ffmpeg compose step needs long-running process (avoid Vercel/Netlify functions for worker)
+7. **Google OAuth + JWT** — NextAuth on the frontend; API scopes all brief/run/library data by authenticated `user_id`
 
 ---
 
@@ -185,4 +186,4 @@ The **Provenance Viewer** (`/run/[runId]`) is the differentiator screen — visu
 
 See [.env.example](../.env.example) and [setup.md](./setup.md) for the full list.
 
-Critical groups: `DATABASE_URL`, `REDIS_URL`, `B2_*`, provider API keys (`GMICLOUD_API_KEY`, `ELEVENLABS_API_KEY`, etc.).
+Critical groups: `DATABASE_URL`, `REDIS_URL`, `B2_*`, provider API keys (`GMICLOUD_API_KEY`, `ELEVENLABS_API_KEY`, etc.), auth (`GOOGLE_CLIENT_ID`, `NEXTAUTH_SECRET`, `AUTH_JWT_SECRET`).
