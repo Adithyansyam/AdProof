@@ -2,28 +2,28 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { BriefForm } from "@/components/BriefForm";
-import { getBrief } from "@/lib/api-client";
+import { listBriefs } from "@/lib/api-client";
 import type { Brief } from "@/lib/types";
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
+  const token = session?.accessToken;
   const [briefs, setBriefs] = useState<Brief[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("adproof_briefs");
-    if (stored) {
-      const ids: string[] = JSON.parse(stored);
-      Promise.all(ids.map((id) => getBrief(id).catch(() => null))).then((results) => {
-        setBriefs(results.filter(Boolean) as Brief[]);
-      });
-    }
-  }, []);
+    if (!token) return;
+    setLoading(true);
+    listBriefs(token)
+      .then((res) => setBriefs(res.items))
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load briefs"))
+      .finally(() => setLoading(false));
+  }, [token]);
 
   const onCreated = (brief: Brief) => {
-    const stored = localStorage.getItem("adproof_briefs");
-    const ids: string[] = stored ? JSON.parse(stored) : [];
-    if (!ids.includes(brief.id)) ids.unshift(brief.id);
-    localStorage.setItem("adproof_briefs", JSON.stringify(ids.slice(0, 20)));
     setBriefs((prev) => [brief, ...prev.filter((b) => b.id !== brief.id)]);
   };
 
@@ -37,8 +37,12 @@ export default function DashboardPage() {
         <BriefForm onCreated={onCreated} />
       </div>
 
-      <h2>Recent Briefs</h2>
-      {briefs.length === 0 ? (
+      <h2>Your Briefs</h2>
+      {loading ? (
+        <p>Loading your briefs...</p>
+      ) : error ? (
+        <p style={{ color: "var(--danger)" }}>{error}</p>
+      ) : briefs.length === 0 ? (
         <p>No briefs yet. Submit your first ad brief above.</p>
       ) : (
         <div className="grid" style={{ gap: "0.75rem" }}>
