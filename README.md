@@ -37,6 +37,10 @@ npm install && npm run dev
 
 App: http://localhost:3000
 
+### Google sign-in (optional for demo)
+
+Protected pages require Google OAuth. See [docs/auth.md](docs/auth.md) and [docs/deployment.md](docs/deployment.md#12-google-oauth-nextauth). For a quick UI-only test without Google, set env vars from `.env.example` first.
+
 ### Demo Flow
 
 1. Open **Dashboard** → submit a brief (brand + description)
