@@ -1,3 +1,8 @@
+export interface BriefListResponse {
+  items: Brief[];
+  total: number;
+}
+
 export interface Brief {
   id: string;
   user_id: string;

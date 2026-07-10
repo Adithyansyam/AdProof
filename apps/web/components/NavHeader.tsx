@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { MockModeBadge } from "./MockModeBadge";
+import { UserMenu } from "./UserMenu";
 
 export function NavHeader() {
+  const { data: session, status } = useSession();
+
   return (
     <header style={{ borderBottom: "1px solid var(--border)" }}>
       <div
@@ -19,10 +23,28 @@ export function NavHeader() {
       >
         <nav className="nav" style={{ margin: 0, padding: 0, border: "none" }}>
           <Link href="/"><strong>AdProof</strong></Link>
-          <Link href="/dashboard">Dashboard</Link>
-          <Link href="/library">Library</Link>
+          {status === "authenticated" && (
+            <>
+              <Link href="/dashboard">Dashboard</Link>
+              <Link href="/library">Library</Link>
+            </>
+          )}
         </nav>
-        <MockModeBadge />
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <MockModeBadge />
+          {status === "authenticated" ? (
+            <UserMenu email={session.user?.email} image={session.user?.image} />
+          ) : (
+            <>
+              <Link href="/login" className="btn btn-secondary btn-sm">
+                Log in
+              </Link>
+              <Link href="/signup" className="btn btn-sm">
+                Sign up
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

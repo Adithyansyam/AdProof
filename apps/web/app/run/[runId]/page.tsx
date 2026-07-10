@@ -2,21 +2,25 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { forkRun, getRun, replayRun, verifyRun } from "@/lib/api-client";
 import { ProvenanceTimeline } from "@/components/ProvenanceTimeline";
 import type { RunDetail, VerifyResult } from "@/lib/types";
 
 export default function RunPage({ params }: { params: { runId: string } }) {
+  const { data: session } = useSession();
+  const token = session?.accessToken;
   const [run, setRun] = useState<RunDetail | null>(null);
   const [verify, setVerify] = useState<VerifyResult | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!token) return;
     let active = true;
     const load = async () => {
       try {
-        const r = await getRun(params.runId);
+        const r = await getRun(params.runId, token);
         if (active) setRun(r);
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : "Failed to load run");
@@ -28,12 +32,13 @@ export default function RunPage({ params }: { params: { runId: string } }) {
       active = false;
       clearInterval(id);
     };
-  }, [params.runId]);
+  }, [params.runId, token]);
 
   async function onVerify() {
+    if (!token) return;
     setVerifying(true);
     try {
-      const result = await verifyRun(params.runId);
+      const result = await verifyRun(params.runId, token);
       setVerify(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Verify failed");
@@ -43,7 +48,8 @@ export default function RunPage({ params }: { params: { runId: string } }) {
   }
 
   async function onReplay() {
-    const child = await replayRun(params.runId);
+    if (!token) return;
+    const child = await replayRun(params.runId, token);
     window.location.href = `/run/${child.id}`;
   }
 

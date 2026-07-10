@@ -2,24 +2,34 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { createBrief } from "@/lib/api-client";
 import type { Brief } from "@/lib/types";
 
 export function BriefForm({ onCreated }: { onCreated?: (brief: Brief) => void }) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const token = session?.accessToken;
+    if (!token) {
+      setError("You must be signed in to create a brief.");
+      return;
+    }
     setLoading(true);
     setError(null);
     const form = new FormData(e.currentTarget);
     try {
-      const brief = await createBrief({
-        brand_name: String(form.get("brand_name")),
-        brief_text: String(form.get("brief_text")),
-      });
+      const brief = await createBrief(
+        {
+          brand_name: String(form.get("brand_name")),
+          brief_text: String(form.get("brief_text")),
+        },
+        token,
+      );
       onCreated?.(brief);
       router.push(`/brief/${brief.id}`);
     } catch (err) {

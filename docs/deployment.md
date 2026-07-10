@@ -48,6 +48,10 @@ Where to host each component in production.
 
 ```env
 NEXT_PUBLIC_API_URL=https://api.your-domain.com
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+NEXTAUTH_SECRET=long-random-string-min-32-chars
+NEXTAUTH_URL=https://adproof.vercel.app
 B2_WEBHOOK_SECRET=your-webhook-secret
 ```
 
@@ -122,6 +126,7 @@ STABILITY_API_KEY=...
 RUNWAY_API_KEY=...
 LUMA_API_KEY=...
 CORS_ORIGINS=https://adproof.vercel.app
+AUTH_JWT_SECRET=long-random-string-min-32-chars
 ```
 
 ---
@@ -220,8 +225,15 @@ jobs:
 
 ### Frontend
 - [ ] `NEXT_PUBLIC_API_URL` points to production API
+- [ ] Google OAuth configured (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_*`)
 - [ ] B2 webhook route deployed and receiving events
 - [ ] SSE/streaming works through Vercel
+- [ ] Login redirects to dashboard; users only see their own briefs
+
+### Auth
+- [ ] Google Cloud OAuth client created with correct redirect URIs
+- [ ] `AUTH_JWT_SECRET` set on backend (matches `NEXTAUTH_SECRET`)
+- [ ] `POST /auth/google` returns token; protected API routes reject missing/invalid JWT
 
 ### Demo
 - [ ] End-to-end: brief → pipeline → variant → verify
@@ -250,3 +262,79 @@ jobs:
 | Vercel/Netlify serverless for worker | ffmpeg timeout (10–60s limit) |
 | Postgres for binary storage | Architecture principle — B2 only |
 | Polling-only frontend | Use B2 webhooks → SSE for demo polish |
+
+---
+
+## 12. Google OAuth (NextAuth)
+
+AdProof uses Google sign-in on the frontend and JWT bearer tokens on the API. Users only see their own briefs, runs, and library items.
+
+### 12.1 Google Cloud Console
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and create or select a project.
+2. Go to **APIs & Services → OAuth consent screen**.
+3. Choose **External** (or Internal for workspace-only), fill app name **AdProof**, support email, and save.
+4. Add scopes: `email`, `profile`, `openid` (defaults are fine).
+5. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
+6. Application type: **Web application**.
+7. Name: `AdProof Web`.
+8. **Authorized JavaScript origins:**
+   - `http://localhost:3000`
+   - `http://localhost:3001`
+   - `https://adproof.vercel.app` (your production domain)
+9. **Authorized redirect URIs:**
+   - `http://localhost:3000/api/auth/callback/google`
+   - `http://localhost:3001/api/auth/callback/google`
+   - `https://adproof.vercel.app/api/auth/callback/google`
+10. Copy **Client ID** and **Client secret**.
+
+### 12.2 Local environment
+
+Root `.env` or `apps/web/.env.local`:
+
+```env
+GOOGLE_CLIENT_ID=....apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-...
+NEXTAUTH_SECRET=openssl-rand-hex-32
+NEXTAUTH_URL=http://localhost:3000
+AUTH_JWT_SECRET=same-value-as-NEXTAUTH_SECRET
+```
+
+Generate a secret:
+
+```bash
+openssl rand -hex 32
+```
+
+Restart `infra/start-api.bat` and `infra/start-web.bat` after setting variables.
+
+### 12.3 Vercel (production frontend)
+
+In Vercel → Project → Settings → Environment Variables, add:
+
+| Key | Value |
+|-----|-------|
+| `GOOGLE_CLIENT_ID` | From Google Console |
+| `GOOGLE_CLIENT_SECRET` | From Google Console |
+| `NEXTAUTH_SECRET` | Random 32+ char string |
+| `NEXTAUTH_URL` | `https://your-app.vercel.app` |
+| `NEXT_PUBLIC_API_URL` | `https://api.your-domain.com` |
+
+Redeploy after saving. Update Google Console redirect URI to match production.
+
+### 12.4 Backend (API host)
+
+Set on Render/Railway/Fly:
+
+```env
+AUTH_JWT_SECRET=<same as NEXTAUTH_SECRET on Vercel>
+CORS_ORIGINS=https://your-app.vercel.app
+```
+
+The API exposes:
+
+- `POST /auth/google` — upsert user after Google sign-in (called by NextAuth server)
+- `GET /auth/me` — current user profile (requires JWT)
+- All `/briefs`, `/runs`, `/library` routes require `Authorization: Bearer <token>`
+
+See [docs/auth.md](auth.md) for the full auth flow.
