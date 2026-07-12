@@ -12,11 +12,12 @@ Postgres holds **metadata and pointers only**. All binary assets live in B2.
 
 ```
 users
-  └── briefs (1:N)
-        └── runs (1:N)
-              ├── run_steps (1:N)
-              ├── variants (1:N)
-              └── runs (self-ref: parent_run_id for forks)
+  ├── briefs (1:N)
+  │     └── runs (1:N)
+  │           ├── run_steps (1:N)
+  │           ├── variants (1:N)
+  │           └── runs (self-ref: parent_run_id for forks)
+  └── user_activities (1:N)
 ```
 
 ---
@@ -25,20 +26,37 @@ users
 
 ### `users`
 
-Google OAuth via NextAuth (frontend). Backend stores profile and issues JWT for API calls.
+Supabase Google OAuth on the frontend. Backend upserts profile on `POST /auth/supabase` and issues a JWT.
 
 ```sql
 CREATE TABLE users (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email       TEXT UNIQUE NOT NULL,
-  google_id   TEXT UNIQUE,
-  name        TEXT,
-  avatar_url  TEXT,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email         TEXT UNIQUE NOT NULL,
+  google_id     TEXT UNIQUE,
+  name          TEXT,
+  avatar_url    TEXT,
+  last_login_at TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
 
-Briefs, runs, and library queries are scoped by `user_id` — users cannot read another account's data.
+Briefs, runs, library, and activity queries are scoped by `user_id` — users cannot read another account's data.
+
+### `user_activities`
+
+Append-only audit of meaningful user actions (login, create brief, fork, replay, verify).
+
+```sql
+CREATE TABLE user_activities (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID NOT NULL REFERENCES users(id),
+  action         TEXT NOT NULL,
+  resource_type  TEXT,
+  resource_id    UUID,
+  metadata_json  TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
 
 ### `briefs`
 
