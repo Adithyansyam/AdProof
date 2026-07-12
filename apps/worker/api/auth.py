@@ -1,13 +1,20 @@
 """Auth API — Supabase OAuth user sync and JWT issuance."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from auth.jwt import create_access_token
 from auth.dependencies import get_current_user
 from db.models import User
 from db.session import get_db
-from schemas import AuthResponse, SupabaseAuthRequest, UserResponse
+from schemas import (
+    ActivityItem,
+    ActivityListResponse,
+    AuthResponse,
+    SupabaseAuthRequest,
+    UserResponse,
+)
+from services.activity import list_user_activities, log_activity
 from services.users import upsert_google_user
 
 router = APIRouter()
@@ -21,6 +28,14 @@ def auth_supabase(body: SupabaseAuthRequest, db: Session = Depends(get_db)):
         google_id=body.provider_user_id,
         name=body.name,
         avatar_url=body.picture,
+    )
+    log_activity(
+        db,
+        user_id=user.id,
+        action="login",
+        resource_type="user",
+        resource_id=user.id,
+        metadata={"provider": "supabase", "email": user.email},
     )
     token = create_access_token(user_id=user.id, email=user.email)
     return AuthResponse(
@@ -41,3 +56,14 @@ def auth_me(user: User = Depends(get_current_user)):
         avatar_url=user.avatar_url,
         created_at=user.created_at,
     )
+
+
+@router.get("/activities", response_model=ActivityListResponse)
+def auth_activities(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    rows = list_user_activities(db, user.id, limit=limit)
+    items = [ActivityItem.model_validate(row) for row in rows]
+    return ActivityListResponse(items=items, total=len(items))

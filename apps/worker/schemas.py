@@ -167,3 +167,20 @@ class LibraryResponse(BaseModel):
 class BriefListResponse(BaseModel):
     items: list[BriefResponse]
     total: int
+
+
+class ActivityItem(BaseModel):
+    id: str
+    action: str
+    resource_type: str | None = None
+    resource_id: str | None = None
+    metadata_json: str | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ActivityListResponse(BaseModel):
+    items: list[ActivityItem]
+    total: int

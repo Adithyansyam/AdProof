@@ -47,6 +47,28 @@ Upsert user from Google OAuth profile (called by NextAuth server).
 
 Returns the authenticated user profile. Requires bearer token.
 
+### `GET /auth/activities`
+
+Returns recent activity events for the authenticated user (`login`, `brief.create`, `run.fork`, `run.replay`, `run.verify`).
+
+**Response `200`:**
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "action": "brief.create",
+      "resource_type": "brief",
+      "resource_id": "uuid",
+      "metadata_json": "{\"brand_name\": \"ColdBrew Co\"}",
+      "created_at": "2026-07-12T12:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
 ---
 
 ## 1. Briefs
